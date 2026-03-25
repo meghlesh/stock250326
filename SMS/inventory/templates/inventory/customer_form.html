@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ company.name }} | Add Customer</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Base Reset and Typography */
+        body { 
+            font-family: 'Inter', sans-serif; 
+            scroll-behavior: smooth;
+        }
+
+        /* Custom Scrollbar Styling */
+        .custom-scrollbar::-webkit-scrollbar { 
+            width: 4px; 
+            height: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track { 
+            background: #f1f5f9; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb { 
+            background: #cbd5e1; 
+            border-radius: 10px; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Sidebar Transition Logic */
+        #sidebar { 
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            overflow: hidden;
+        }
+        
+        /* Sidebar Text Visibility Logic */
+        .sidebar-text {
+            white-space: nowrap;
+            transition: opacity 0.2s ease-in-out, visibility 0.2s;
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Collapsed State Styles (Rail View) */
+        .collapsed .sidebar-text {
+            opacity: 0;
+            visibility: hidden;
+            width: 0;
+            display: none;
+        }
+
+        .collapsed .nav-item {
+            justify-content: center;
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        .collapsed .sidebar-header {
+            justify-content: center;
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        .collapsed .sidebar-section-label {
+            display: none;
+        }
+
+        .collapsed .sidebar-footer-item {
+            justify-content: center;
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        /* Active Navigation Link */
+        .active-nav { 
+            background-color: #4f46e5; 
+            color: white !important; 
+            box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.2); 
+        }
+        
+        /* Form Global Styling */
+        input[type="text"],
+        input[type="email"],
+        input[type="number"],
+        input[type="tel"],
+        input[type="url"],
+        input[type="password"],
+        textarea,
+        select {
+            width: 100%;
+            height: 44px;
+            padding: 0 16px;
+            font-size: 0.875rem;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 0.75rem;
+            background-color: #ffffff;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        textarea {
+            height: auto;
+            padding: 12px 16px;
+        }
+
+        /* Form Interaction States */
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 4px rgb(79 70 229 / 10%);
+        }
+
+        input.border-red-500, select.border-red-500, textarea.border-red-500 {
+            border-color: #ef4444 !important;
+            background-color: #fef2f2 !important;
+        }
+
+        input:disabled, select:disabled, textarea:disabled {
+            background-color: #f8fafc;
+            cursor: not-allowed;
+            color: #94a3b8;
+        }
+
+        /* Checkbox customization */
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #4f46e5;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        /* Tab Active State */
+        .tab-active { 
+            background-color: #4f46e5; 
+            color: white !important; 
+            border-bottom: 2px solid #4f46e5;
+        }
+
+        /* Animation for Logout Loader */
+        .box-loader {
+            width: 48px;
+            height: 48px;
+            border: 4px solid #4f46e5;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { 
+            to { transform: rotate(360deg); } 
+        }
+
+        /* Tab content transitions */
+        .tab-content {
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    </style>
+</head>
+
+<body class="bg-slate-50 text-slate-900 overflow-x-hidden">
+    
+    <!-- ================= LOGOUT LOADER OVERLAY ================= -->
+    <div id="logout-loader" class="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center hidden">
+        <div class="box-loader"></div>
+        <h3 class="mt-10 text-2xl font-bold text-slate-800 tracking-tight">Packing your workspace...</h3>
+        <p class="text-slate-400 font-medium mt-2">Saving progress and signing out safely.</p>
+    </div>
+
+    <!-- ================= LOGOUT CONFIRMATION MODAL ================= -->
+    <div id="logout-modal" class="fixed inset-0 z-[90] bg-slate-900/40 backdrop-blur-md flex items-center justify-center hidden">
+        <div class="bg-white rounded-[2.5rem] p-10 max-w-sm w-full mx-4 shadow-2xl transform transition-all scale-95 opacity-0 duration-300 border border-slate-100" id="modal-content">
+            <div class="w-20 h-20 bg-rose-50 text-rose-600 rounded-3xl flex items-center justify-center mb-8 mx-auto">
+                <i data-lucide="log-out" class="w-10 h-10"></i>
+            </div>
+            <h3 class="text-3xl font-bold text-slate-900 text-center tracking-tight">Ready to go?</h3>
+            <p class="text-slate-500 mt-4 mb-10 text-center leading-relaxed">Confirm to sign out of your portal. We'll make sure your session is closed securely.</p>
+            <div class="flex flex-col gap-3">
+                <form id="logout-form" action="{% url 'company_logout' %}" method="POST" class="w-full">
+                    {% csrf_token %}
+                    <button type="submit" class="w-full px-6 py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all active:scale-[0.98]">
+                        Yes, Log me out
+                    </button>
+                </form>
+                <button onclick="closeLogoutModal()" class="w-full px-6 py-4 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-all">
+                    Stay here
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MAIN LAYOUT WRAPPER ================= -->
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- ================= SIDEBAR ================= -->
+        <!-- Starts in 'collapsed' (Rail) mode: w-20 -->
+        <aside id="sidebar"
+               class="h-screen w-20 bg-white border-r border-slate-200 flex flex-col shrink-0 z-50 collapsed">
+            
+            <!-- Sidebar Header / Branding -->
+            <div class="p-4 flex items-center h-16 shrink-0 sidebar-header">
+                <div class="flex items-center gap-3 overflow-hidden">
+                    <div class="bg-indigo-600 p-2 rounded-lg text-white shrink-0 shadow-lg shadow-indigo-100">
+                        <i data-lucide="building-2" class="w-6 h-6"></i>
+                    </div>
+                    <div class="sidebar-text">
+                        <h1 class="font-bold text-lg leading-none truncate text-slate-800">{{ company.name|default:"Enterprise" }}</h1>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-widest">Management</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="flex-1 overflow-y-auto p-3 space-y-1 custom-scrollbar">
+                <!-- Group: Core -->
+                <a href="{% url 'company_dashboard' %}" class="nav-item flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5 shrink-0"></i>
+                    <span class="sidebar-text">Dashboard</span>
+                </a>
+
+                <!-- Group: CRM -->
+                <div class="pt-4 pb-2 px-3 sidebar-section-label">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Client Relations</p>
+                </div>
+
+                <a href="{% url 'customer_list' %}" class="nav-item active-nav flex items-center gap-3 px-3 py-3 text-sm font-medium rounded-xl transition-all">
+                    <i data-lucide="users" class="w-5 h-5 shrink-0"></i>
+                    <span class="sidebar-text">Customers</span>
+                </a>
+
+                <a href="{% url 'vendor_list' %}" class="nav-item flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all">
+                    <i data-lucide="truck" class="w-5 h-5 shrink-0"></i>
+                    <span class="sidebar-text">Vendors</span>
+                </a>
+
+                <!-- Group: Settings -->
+                <div class="pt-4 pb-2 px-3 sidebar-section-label">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Platform</p>
+                </div>
+
+                <a href="{% url 'company_settings' %}" class="nav-item flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all">
+                    <i data-lucide="settings" class="w-5 h-5 shrink-0"></i>
+                    <span class="sidebar-text">Settings</span>
+                </a>
+            </nav>
+
+            <!-- Sidebar Footer -->
+            <div class="p-3 border-t border-slate-100">
+                <button onclick="openLogoutModal()" class="sidebar-footer-item flex items-center gap-3 w-full px-3 py-3 text-sm font-medium text-rose-600 hover:bg-rose-50 rounded-xl transition-all group">
+                    <i data-lucide="log-out" class="w-5 h-5 shrink-0 transition-transform group-hover:-translate-x-1"></i>
+                    <span class="sidebar-text">Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- ================= MAIN CONTENT AREA ================= -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+
+            <!-- Global Header -->
+            <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-8 shrink-0 z-30">
+                <div class="flex items-center gap-4">
+                    <!-- Hamburger Toggle Button -->
+                    <!-- This button is always visible and toggles the sidebar Rail/Full states -->
+                    <button id="toggle-sidebar" class="p-2 hover:bg-slate-50 rounded-lg text-slate-500 transition-colors">
+                        <i data-lucide="menu" class="w-5 h-5"></i>
+                    </button>
+
+                    <!-- Breadcrumbs (Desktop) -->
+                    <nav class="hidden sm:flex items-center gap-2 text-sm text-slate-400 font-medium">
+                        <a href="{% url 'company_dashboard' %}" class="hover:text-indigo-600 transition-colors">Dashboard</a>
+                        <i data-lucide="chevron-right" class="w-4 h-4 opacity-50"></i>
+                        <a href="{% url 'customer_list' %}" class="hover:text-indigo-600 transition-colors">Customers</a>
+                        <i data-lucide="chevron-right" class="w-4 h-4 opacity-50"></i>
+                        <span class="text-slate-800 font-semibold">Add New Customer</span>
+                    </nav>
+
+                    <!-- Page Title (Mobile) -->
+                    <span class="font-bold text-slate-800 sm:hidden">Add Customer</span>
+                </div>
+
+                <!-- User Profile Trigger -->
+                <div class="flex items-center gap-3">
+                    <div class="text-right hidden sm:block">
+                        <p class="text-xs font-bold text-slate-800">{{ request.user.username }}</p>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Authorized Admin</p>
+                    </div>
+                    <div class="h-10 w-10 rounded-full bg-indigo-50 border-2 border-white shadow-sm flex items-center justify-center text-indigo-700 font-bold">
+                        {{ request.user.username|slice:":1"|upper|default:"A" }}
+                    </div>
+                </div>
+            </header>
+
+            <!-- Scrollable Content Container -->
+            <div class="flex-1 overflow-y-auto p-4 sm:p-6 md:p-10 custom-scrollbar">
+                <div class="max-w-4xl mx-auto space-y-8">
+
+                    <!-- Title and Back Action -->
+                    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                        <div class="space-y-1">
+                            <h2 class="text-3xl font-black tracking-tight text-slate-900">Add New Customer</h2>
+                            <p class="text-slate-500 text-sm">Create a complete profile for your business partners including contact and tax info.</p>
+                        </div>
+                        <a href="{% url 'customer_list' %}" class="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-400 hover:text-indigo-600 border border-transparent hover:border-slate-200 rounded-xl transition-all group">
+                            <i data-lucide="arrow-left" class="w-4 h-4 transition-transform group-hover:-translate-x-1"></i> BACK TO CUSTOMERS
+                        </a>
+                    </div>
+
+                    <!-- FORM CARD WRAPPER -->
+                    <div class="bg-white rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden mb-12">
+                        <form method="post" novalidate id="customerForm">
+                            {% csrf_token %}
+
+                            <!-- MULTI-STEP TABS HEADER -->
+                            <div class="flex border-b border-slate-100 bg-slate-50/50 overflow-x-auto no-scrollbar px-2">
+                                <button type="button" data-tab="basic" class="tab-btn tab-active px-8 py-5 text-xs font-bold uppercase tracking-widest transition-all">
+                                    01. Basic Profile
+                                </button>
+                                <button type="button" data-tab="addresses" class="tab-btn px-8 py-5 text-xs font-bold uppercase tracking-widest text-slate-400 transition-all">
+                                    02. Business Locations
+                                </button>
+                                <button type="button" data-tab="contacts" class="tab-btn px-8 py-5 text-xs font-bold uppercase tracking-widest text-slate-400 transition-all">
+                                    03. Contact Persons
+                                </button>
+                            </div>
+
+                            <!-- TAB 01: BASIC DETAILS -->
+                            <div id="basic" class="tab-content p-8 md:p-12 space-y-10">
+                                <!-- Section: General Info -->
+                                <div class="grid md:grid-cols-3 gap-10">
+                                    <div class="space-y-2">
+                                        <h3 class="text-lg font-bold text-slate-900">General Information</h3>
+                                        <p class="text-xs text-slate-500 leading-relaxed">Fundamental data used for billing, shipping documents, and tax filings.</p>
+                                    </div>
+                                    <div class="md:col-span-2 space-y-6">
+                                        {% for field in form %}
+                                            {% if field.name != 'notes' %}
+                                            <div class="space-y-2 group">
+                                                <label class="text-[11px] font-bold uppercase text-slate-500 ml-1 flex items-center gap-1 group-focus-within:text-indigo-600 transition-colors">
+                                                    {{ field.label }} 
+                                                    {% if field.field.required or "phone" in field.name %}<span class="text-rose-500">*</span>{% endif %}
+                                                </label>
+                                                {{ field }}
+                                                {% if field.errors %}
+                                                    <p class="text-rose-600 text-[11px] font-bold mt-1 pl-1 flex items-center gap-1">
+                                                        <i data-lucide="alert-circle" class="w-3 h-3"></i> {{ field.errors|striptags }}
+                                                    </p>
+                                                {% endif %}
+                                            </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                
+                                <!-- Section: Internal Notes -->
+                                <div class="grid md:grid-cols-3 gap-10 pt-10 border-t border-slate-100">
+                                    <div class="space-y-2">
+                                        <h3 class="text-lg font-bold text-slate-900">Internal Documentation</h3>
+                                        <p class="text-xs text-slate-500 leading-relaxed">Notes regarding credit terms, special instructions, or history. Only visible to staff.</p>
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <textarea name="notes" rows="4" class="!h-auto py-4 resize-none placeholder:text-slate-300" placeholder="Add custom terms or internal notes here...">{{ form.notes.value|default:"" }}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- TAB 02: ADDRESSES -->
+                            <div id="addresses" class="tab-content hidden p-8 md:p-12 space-y-8">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div>
+                                        <h3 class="text-xl font-bold text-slate-900">Business Locations</h3>
+                                        <p class="text-sm text-slate-500">Provide Billing and Shipping address details.</p>
+                                    </div>
+                                </div>
+                                
+                                <div id="addresses-container" class="space-y-6">
+                                    {{ address_formset.management_form }}
+                                    {% for aform in address_formset %}
+                                    <div class="p-8 rounded-3xl border border-slate-200 bg-slate-50/30 space-y-6 relative group">
+                                        <!-- Hidden Django Fields -->
+                                        {% for hidden in aform.hidden_fields %} {{ hidden }} {% endfor %}
+                                        
+                                        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {% for field in aform.visible_fields %}
+                                                {% if field.field.widget.input_type == "checkbox" %}
+                                                    <div class="flex items-center gap-3 mt-6 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+                                                        {{ field }}
+                                                        <label class="text-sm font-bold text-slate-700 cursor-pointer">{{ field.label }}</label>
+                                                    </div>
+                                                {% else %}
+                                                    <div class="space-y-2">
+                                                        <label class="text-[11px] font-bold uppercase text-slate-500 ml-1">
+                                                            {{ field.label }} {% if field.field.required %}<span class="text-rose-500">*</span>{% endif %}
+                                                        </label>
+                                                        {{ field }}
+                                                        {% if field.errors %}
+                                                            <p class="text-rose-600 text-[11px] font-bold mt-1">{{ field.errors|striptags }}</p>
+                                                        {% endif %}
+                                                    </div>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- TAB 03: CONTACT PERSONS -->
+                            <div id="contacts" class="tab-content hidden p-8 md:p-12 space-y-8">
+                                <div class="mb-2">
+                                    <h3 class="text-xl font-bold text-slate-900">Key Contact Persons</h3>
+                                    <p class="text-sm text-slate-500">Primary point of contacts at the customer organization.</p>
+                                </div>
+                                
+                                <div id="contacts-container" class="space-y-6">
+                                    {{ contact_formset.management_form }}
+                                    {% for cform in contact_formset %}
+                                    <div class="p-8 rounded-3xl border border-slate-200 bg-slate-50/30 space-y-6 relative">
+                                        {% for hidden in cform.hidden_fields %} {{ hidden }} {% endfor %}
+                                        
+                                        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {% for field in cform.visible_fields %}
+                                                {% if field.field.widget.input_type == "checkbox" %}
+                                                    <div class="flex items-center gap-3 mt-6 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+                                                        {{ field }}
+                                                        <label class="text-sm font-bold text-slate-700 cursor-pointer">{{ field.label }}</label>
+                                                    </div>
+                                                {% else %}
+                                                    <div class="space-y-2">
+                                                        <label class="text-[11px] font-bold uppercase text-slate-500 ml-1">
+                                                            {{ field.label }} {% if field.field.required %}<span class="text-rose-500">*</span>{% endif %}
+                                                        </label>
+                                                        {{ field }}
+                                                        {% if field.errors %}
+                                                            <p class="text-rose-600 text-[11px] font-bold mt-1">{{ field.errors|striptags }}</p>
+                                                        {% endif %}
+                                                    </div>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- FORM FOOTER ACTIONS -->
+                            <div class="px-10 py-8 bg-slate-50 border-t border-slate-100 flex justify-end items-center gap-4">
+                                <a href="{% url 'customer_list' %}" class="px-8 py-3 rounded-2xl bg-white border border-slate-200 font-bold text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all active:scale-[0.98]">
+                                    Cancel
+                                </a>
+                                <button type="button" id="nextBtn" class="px-12 py-3 rounded-2xl bg-indigo-600 text-white font-bold text-sm shadow-xl shadow-indigo-100 hover:bg-indigo-700 hover:shadow-indigo-200 transition-all active:scale-[0.98]">
+                                    Next Step
+                                </button>
+                                <button type="submit" id="saveBtn" class="px-12 py-3 rounded-2xl bg-emerald-600 text-white font-bold text-sm shadow-xl shadow-emerald-100 hover:bg-emerald-700 hover:shadow-emerald-200 transition-all active:scale-[0.98] hidden">
+                                    Save Customer
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Module Branding Footer -->
+                    <div class="text-center pb-12">
+                        <p class="text-[10px] text-slate-400 uppercase font-black tracking-[0.2em] opacity-60">Enterprise Customer Management Framework v2.0</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
+    <script>
+        /**
+         * SIDEBAR LOGIC
+         * Handles the 'Rail' (collapsed) to 'Full' (expanded) transition.
+         * The hamburger menu in the header toggles this state.
+         */
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.getElementById('toggle-sidebar');
+
+        function toggleSidebar() {
+            if (sidebar.classList.contains('collapsed')) {
+                // Open to full width
+                sidebar.classList.remove('collapsed', 'w-20');
+                sidebar.classList.add('w-64');
+            } else {
+                // Collapse to rail view (icons only)
+                sidebar.classList.add('collapsed', 'w-20');
+                sidebar.classList.remove('w-64');
+            }
+        }
+
+        toggleBtn.addEventListener('click', toggleSidebar);
+
+        /**
+         * MULTI-STEP TAB LOGIC
+         */
+        const steps = ["basic", "addresses", "contacts"];
+        let currentStep = 0;
+        const nextBtn = document.getElementById("nextBtn");
+        const saveBtn = document.getElementById("saveBtn");
+        const tabBtns = document.querySelectorAll('.tab-btn');
+
+        function showStep(idx) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+            document.getElementById(steps[idx]).classList.remove('hidden');
+            
+            tabBtns.forEach((btn, i) => {
+                if(i === idx) {
+                    btn.classList.add('tab-active');
+                    btn.classList.remove('text-slate-400');
+                } else {
+                    btn.classList.remove('tab-active');
+                    btn.classList.add('text-slate-400');
+                }
+            });
+
+            if(idx === steps.length - 1) {
+                nextBtn.classList.add('hidden');
+                saveBtn.classList.remove('hidden');
+            } else {
+                nextBtn.classList.remove('hidden');
+                saveBtn.classList.add('hidden');
+            }
+            
+            document.querySelector('main').scrollTop = 0;
+        }
+
+        nextBtn.addEventListener("click", () => {
+            if (currentStep === 0) {
+                const basicSection = document.getElementById("basic");
+                const requiredInputs = basicSection.querySelectorAll("input[required], select[required]");
+                let stepValid = true;
+
+                requiredInputs.forEach(input => {
+                    if (!input.value.trim()) {
+                        input.classList.add("border-red-500");
+                        stepValid = false;
+                    } else {
+                        input.classList.remove("border-red-500");
+                    }
+                });
+
+                if (!stepValid) {
+                    const firstMissing = basicSection.querySelector(".border-red-500");
+                    if(firstMissing) firstMissing.focus();
+                    return;
+                }
+            }
+
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                showStep(currentStep);
+            }
+        });
+
+        tabBtns.forEach((btn, idx) => {
+            btn.addEventListener("click", (e) => {
+                e.preventDefault();
+                if(idx <= currentStep) {
+                    currentStep = idx;
+                    showStep(currentStep);
+                }
+            });
+        });
+
+        /**
+         * REAL-TIME FIELD UNIQUENESS
+         */
+        function checkUniqueness(fieldName, value, label) {
+            if (!value.trim()) return;
+            
+            fetch(`/inventory/api/check-customer-field/?field=${fieldName}&value=${encodeURIComponent(value)}`)
+                .then(res => res.json())
+                .then(data => {
+                    const input = document.querySelector(`[name="${fieldName}"]`);
+                    let errorEl = document.getElementById(`${fieldName}-unique-error`);
+
+                    if (data.exists) {
+                        input.classList.add('border-red-500');
+                        if (!errorEl) {
+                            errorEl = document.createElement('p');
+                            errorEl.id = `${fieldName}-unique-error`;
+                            errorEl.className = 'text-rose-600 text-[11px] font-bold mt-1 pl-1';
+                            input.parentNode.appendChild(errorEl);
+                        }
+                        errorEl.innerHTML = `<i data-lucide="alert-circle" class="inline w-3 h-3"></i> ${label} already exists in system.`;
+                        lucide.createIcons();
+                    } else {
+                        input.classList.remove('border-red-500');
+                        if (errorEl) errorEl.remove();
+                    }
+                })
+                .catch(err => console.error("Validation failed:", err));
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const email = document.querySelector('[name="email"]');
+            if (email) email.addEventListener('blur', function() { checkUniqueness('email', this.value, 'Email'); });
+            
+            const gst = document.querySelector('[name="gst_number"]');
+            if (gst) gst.addEventListener('blur', function() { checkUniqueness('gst_number', this.value, 'GST Number'); });
+
+            const phone = document.querySelector('[name="phone"]');
+            if (phone) {
+                phone.addEventListener('input', (e) => {
+                    let val = e.target.value.replace(/\D/g, '');
+                    if (val.length > 10) val = val.substring(0, 10);
+                    e.target.value = val;
+                });
+                phone.addEventListener('blur', function() { checkUniqueness('phone', this.value, 'Phone'); });
+            }
+
+            document.querySelectorAll('input[name*="zip_code"]').forEach(zip => {
+                zip.setAttribute('maxlength', '6');
+                zip.setAttribute('inputmode', 'numeric');
+                zip.addEventListener('input', (e) => {
+                    e.target.value = e.target.value.replace(/\D/g, '').substring(0, 6);
+                });
+            });
+        });
+
+        /**
+         * LOGOUT FLOW
+         */
+        const lModal = document.getElementById('logout-modal');
+        const lContent = document.getElementById('modal-content');
+        const lLoader = document.getElementById('logout-loader');
+        const lForm = document.getElementById('logout-form');
+
+        function openLogoutModal() {
+            lModal.classList.remove('hidden');
+            setTimeout(() => { lContent.classList.remove('scale-95', 'opacity-0'); }, 10);
+        }
+
+        function closeLogoutModal() {
+            lContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => { lModal.classList.add('hidden'); }, 300);
+        }
+
+        lForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            closeLogoutModal();
+            setTimeout(() => {
+                lLoader.classList.remove('hidden');
+                setTimeout(() => { this.submit(); }, 1500);
+            }, 300);
+        });
+
+        /**
+         * PAGE INITIALIZATION
+         */
+        window.onload = () => {
+            lucide.createIcons();
+            showStep(0);
+        };
+    </script>
+</body>
+</html>

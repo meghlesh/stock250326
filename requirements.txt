@@ -1,0 +1,21 @@
+﻿asgiref==3.11.1
+charset-normalizer==3.4.5
+colorama==0.4.6
+#Django==6.0.3
+Django==5.2.5
+django-rest-framework==0.1.0
+djangorestframework==3.16.1
+et_xmlfile==2.0.0
+openpyxl==3.1.5
+pillow==12.1.1
+psycopg2-binary==2.9.11
+qrcode==8.2
+reportlab==4.4.10
+sqlparse==0.5.5
+tzdata==2025.3
+gunicorn
+psycopg2-binary
+
+#1 create env
+#2 activate it (venv\scripts\activate)
+#3 pip install -r requirements.txt

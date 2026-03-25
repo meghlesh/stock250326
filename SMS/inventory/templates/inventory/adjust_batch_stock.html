@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ company.name }} | Adjust Batch Stock</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .active-nav { background:#4f46e5; color:white; }
+        
+        
+    @media (max-width: 640px) {
+    .flex.flex-col.sm\:flex-row {
+        flex-direction: row;    
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .flex.flex-col.sm\:flex-row button,
+    .flex.flex-col.sm\:flex-row a {
+        padding: 10px 14px;      
+        font-size: 13px;
+        white-space: nowrap;     
+    }
+}
+
+.field-error {
+            border-color: #ef4444 !important;
+            background-color: #fef2f2 !important;
+            ring-color: #ef4444 !important;
+        }
+        .error-text {
+            color: #dc2626;
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+            font-weight: 500;
+        }
+
+        select:disabled {
+    background-color: #f1f5f9;
+    cursor: not-allowed;
+}
+
+    </style>
+</head>
+
+<body class="bg-slate-50 text-slate-900 overflow-hidden">
+<div id="successPopup"
+class="fixed top-6 left-1/2 -translate-x-1/2
+bg-emerald-500 text-white px-6 py-3
+rounded-xl shadow-lg font-semibold
+hidden z-[100] flex items-center gap-2">
+
+<i data-lucide="check-circle"></i>
+
+Batch stock adjusted successfully
+
+</div>
+<!-- Mobile Overlay -->
+<div id="sidebarOverlay" class="fixed inset-0 bg-black/40 z-40 hidden md:hidden" onclick="toggleSidebar()"></div>
+
+<div class="flex h-screen overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside id="sidebar"
+        class="fixed md:static inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200
+               flex flex-col shrink-0 transform -translate-x-full md:translate-x-0
+               transition-transform duration-300 ease-in-out">
+
+        <div class="p-6 border-b flex items-center gap-3">
+            <div class="bg-indigo-600 p-2 rounded-lg text-white">
+                <i data-lucide="layers"></i>
+            </div>
+            <div>
+                <h1 class="font-bold">{{ company.name }}</h1>
+                <p class="text-[10px] uppercase text-slate-400">Enterprise</p>
+            </div>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-1 custom-scrollbar">
+            <a href="/company/dashboard/" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100">
+                <i data-lucide="layout-dashboard"></i> Dashboard
+            </a>
+
+            <a href="{% url 'product_list' %}" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100">
+                <i data-lucide="package"></i> My Inventory
+            </a>
+
+            <a href="{% url 'batch_stock_list' %}" class="nav-item active-nav flex items-center gap-3 px-4 py-3 rounded-lg">
+                <i data-lucide="layers"></i> Batch Stock
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+
+        <!-- Header -->
+        <header class="h-16 bg-white border-b flex items-center justify-between px-4 sm:px-6 md:px-8">
+
+    <!-- Left section -->
+    <div class="flex items-center gap-3">
+        <!-- Mobile Menu Button -->
+        <button onclick="toggleSidebar()" class="md:hidden p-2 rounded-lg hover:bg-slate-100">
+            <i data-lucide="menu"></i>
+        </button>
+
+        <!-- Back Button -->
+        <a href="{% url 'batch_stock_list' %}"
+           class="p-2 rounded-lg hover:bg-slate-100 flex items-center gap-1 text-slate-600">
+            <i data-lucide="arrow-left"></i>
+        </a>
+
+        <h2 class="text-base sm:text-lg font-bold">Adjust Batch Stock</h2>
+    </div>
+
+    <!-- Profile -->
+    <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold">
+        {{ request.user.username|slice:":1"|upper }}
+    </div>
+</header>
+
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 custom-scrollbar">
+
+            <div class="w-full max-w-3xl mx-auto bg-white rounded-2xl border border-slate-200 shadow-sm">
+
+                <form method="POST" id="adjustStockForm" novalidate
+                          class="p-4 sm:p-6 md:p-8 space-y-5">
+                    {% csrf_token %}
+
+                    <div>
+                        <h3 class="text-lg sm:text-xl font-bold">Stock Adjustment</h3>
+                        <p class="text-sm text-slate-500">Increase or decrease stock for a specific batch</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-800 mb-1">
+                            Product <span class="text-red-500">*</span>
+                        </label>
+                        <select name="product" id="productSelect" required
+                            class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm sm:text-base focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                            <option value="" disabled selected>Select a product</option>
+                            {% for product in products %}
+                            <option value="{{ product.id }}"
+                                    data-expiry="{{ product.is_expiry_tracked|yesno:'true,false' }}">
+                                {{ product.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-800 mb-1">
+                            Batch <span class="text-red-500">*</span>
+                        </label>
+
+                        <select name="batch_number" id="batchSelect" required disabled
+    class="w-full border border-slate-300 rounded-xl px-4 py-3
+           text-sm sm:text-base focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+    <option value="">Select Product First</option>
+</select>
+
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-800 mb-1">Adjustment Type<span class="text-red-500">*</span></label>
+                        <select name="adjustment_type" id="adjustmentType" required
+                            class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm sm:text-base focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                            <option value="add">Add Stock</option>
+                            <option value="remove">Remove Stock</option>
+                        </select>
+                    </div>
+
+                    <!-- Expiry Date (ONLY FOR ADD STOCK) -->
+                    <div id="expiry-field" class="hidden">
+                        <label class="block text-xs font-bold text-slate-600 mb-1">
+                            Expiry Date <span class="text-red-500">*</span>
+                        </label>
+                        <input type="date"
+                               name="expiry_date"
+                               id="expiryDate"
+                               min="{{ today }}"
+                               class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm sm:text-base focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-800 mb-1">Quantity<span class="text-red-500">*</span></label>
+                        <input type="number" name="quantity" min="1" required
+                               id="quantityInput"
+                               placeholder="Enter quantity"
+                               class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm sm:text-base focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-800 mb-1">Reason<span class="text-red-500">*</span></label>
+                        <textarea name="reason" id="reasonInput" rows="3" required
+                            class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm sm:text-base focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                            placeholder="Damage, stock correction, audit adjustment..."></textarea>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row justify-end gap-3 pt-4">
+                        <a href="{% url 'batch_stock_list' %}"
+                           class="px-5 py-3 border rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-100 text-center">
+                            Cancel
+                        </a>
+                        <button type="submit" class="px-5 py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition"
+                            onclick="localStorage.setItem('showSuccessPopup','true')">
+                            Save Adjustment
+                        </button>
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<script>
+    lucide.createIcons();
+
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+
+        sidebar.classList.toggle('-translate-x-full');
+        overlay.classList.toggle('hidden');
+    }
+
+    const productSelect = document.getElementById('productSelect');
+    const batchSelect = document.getElementById("batchSelect");
+    const qtyInput = document.getElementById("quantityInput");
+    const adjustmentType = document.getElementById('adjustmentType');
+    const expiryField = document.getElementById('expiry-field');
+    const expiryInput = document.getElementById('expiryDate');
+    const reasonInput = document.getElementById('reasonInput');
+    const adjustForm = document.getElementById('adjustStockForm');
+
+    // --- Dynamic Data Loading ---
+
+    
+productSelect.addEventListener("change", async function () {
+    const productId = this.value;
+
+    clearErrors();
+    batchSelect.disabled = true;
+    batchSelect.innerHTML = `<option value="">Loading batches...</option>`;
+
+    if (!productId) {
+        batchSelect.innerHTML = `<option value="">Select Product First</option>`;
+        return;
+    }
+
+    try {
+        const res = await fetch(
+            `{% url 'get_batches_by_product' %}?product=${productId}`
+        );
+
+        if (!res.ok) {
+            throw new Error("Failed to fetch batches");
+        }
+
+        const data = await res.json();
+
+        batchSelect.innerHTML = "";
+
+        if (data.length === 0) {
+            batchSelect.innerHTML =
+                `<option value="">No batches available</option>`;
+            return;
+        }
+
+        batchSelect.innerHTML =
+            `<option value="">Select Batch</option>`;
+
+        data.forEach(b => {
+            const opt = document.createElement("option");
+            opt.value = b.batch_number;
+            opt.dataset.max = b.quantity;
+            opt.textContent =
+                `${b.batch_number} (Qty: ${b.quantity})`;
+            batchSelect.appendChild(opt);
+        });
+
+        batchSelect.disabled = false;
+
+    } catch (error) {
+        console.error(error);
+        batchSelect.innerHTML =
+            `<option value="">Error loading batches</option>`;
+    }
+
+    toggleExpiryField();
+});
+
+
+    async function updateMaxQuantity() {
+        if (!productSelect.value || !batchSelect.value) return;
+
+        const selectedBatch = batchSelect.options[batchSelect.selectedIndex];
+        const currentBatchStock = parseInt(selectedBatch.dataset.max || 0);
+
+        if (adjustmentType.value === "remove") {
+            qtyInput.max = currentBatchStock;
+            qtyInput.placeholder = `Max available: ${currentBatchStock}`;
+        } else {
+            qtyInput.removeAttribute("max");
+            qtyInput.placeholder = "Enter quantity";
+        }
+    }
+
+    batchSelect.addEventListener("change", updateMaxQuantity);
+    adjustmentType.addEventListener("change", () => {
+        updateMaxQuantity();
+        toggleExpiryField();
+    });
+
+    // --- Validation Logic ---
+
+    function toggleExpiryField() {
+        const selectedOption = productSelect.options[productSelect.selectedIndex];
+        const isExpiryTracked = selectedOption?.dataset.expiry === "true";
+
+        if (adjustmentType.value === "add" && isExpiryTracked) {
+            expiryField.classList.remove("hidden");
+        } else {
+            expiryField.classList.add("hidden");
+            expiryInput.value = ""; // Clear if hidden
+        }
+    }
+
+    function showFieldError(fieldName, message) {
+        const field = document.querySelector(`[name="${fieldName}"]`);
+        if (!field) return;
+        
+        field.classList.add('field-error');
+        const error = document.createElement('p');
+        error.className = 'error-text';
+        error.textContent = message;
+        field.parentNode.appendChild(error);
+    }
+
+    function clearErrors() {
+        document.querySelectorAll('.field-error').forEach(el => el.classList.remove('field-error'));
+        document.querySelectorAll('.error-text').forEach(el => el.remove());
+    }
+
+    adjustForm.addEventListener('submit', function (e) {
+        clearErrors();
+        let valid = true;
+
+        const product = productSelect.value;
+        const batch = batchSelect.value;
+        const type = adjustmentType.value;
+        const qty = parseInt(qtyInput.value);
+        const reason = reasonInput.value.trim();
+        const selectedBatch = batchSelect.options[batchSelect.selectedIndex];
+        const maxQtyAvailable = selectedBatch ? parseInt(selectedBatch.dataset.max || 0) : 0;
+        
+        const selectedProductOption = productSelect.options[productSelect.selectedIndex];
+        const isExpiryTracked = selectedProductOption?.dataset.expiry === "true";
+
+        // 1. Product Validation
+        if (!product) {
+            showFieldError('product', 'Please select a product');
+            valid = false;
+        }
+
+        // 2. Batch Validation
+        if (!batch) {
+            showFieldError('batch_number', 'Please select a batch');
+            valid = false;
+        }
+
+        // 3. Expiry Date Validation (Only if tracked and adding)
+        if (type === 'add' && isExpiryTracked) {
+            if (!expiryInput.value) {
+                showFieldError('expiry_date', 'Expiry date is required for this product');
+                valid = false;
+            }
+        }
+
+        // 4. Quantity Validation
+        if (isNaN(qty) || qty <= 0) {
+            showFieldError('quantity', 'Enter a valid quantity greater than 0');
+            valid = false;
+        } else if (type === 'remove' && qty > maxQtyAvailable) {
+            showFieldError('quantity', `Insufficient stock. Maximum available is ${maxQtyAvailable}`);
+            valid = false;
+        }
+
+        // 5. Reason Validation
+        if (!reason) {
+            showFieldError('reason', 'Please provide a reason for this adjustment');
+            valid = false;
+        }
+
+        if (!valid) {
+            e.preventDefault();
+            // Scroll to the first error
+            const firstError = document.querySelector('.field-error');
+            if (firstError) {
+                firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    });
+
+    // Instant validation on input
+    qtyInput.addEventListener("input", () => {
+        if (adjustmentType.value === "remove" && qtyInput.max && Number(qtyInput.value) > Number(qtyInput.max)) {
+            // We don't force clear it yet, just let the user see it's wrong via submit or custom CSS
+        }
+    });
+
+</script>
+<script>
+
+document.addEventListener("DOMContentLoaded", function(){
+
+    const params = new URLSearchParams(window.location.search);
+    const popup = document.getElementById("successPopup");
+    const form = document.getElementById("adjustStockForm");
+
+    if(params.get("success") === "1"){
+
+        popup.classList.remove("hidden");
+
+        // clear form
+        form.reset();
+
+        // hide popup after 2 seconds
+        setTimeout(()=>{
+            popup.style.opacity = "0";
+            setTimeout(()=>{
+                popup.remove();
+            },500);
+        },2000);
+
+        // remove query param
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+});
+
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const popup = document.getElementById("successPopup");
+
+    if(localStorage.getItem("showSuccessPopup") === "true"){
+        popup.classList.remove("hidden");
+
+        setTimeout(() => {
+            popup.classList.add("hidden");
+        }, 3000);
+
+        localStorage.removeItem("showSuccessPopup");
+    }
+
+});
+</script>
+</body>
+</html>

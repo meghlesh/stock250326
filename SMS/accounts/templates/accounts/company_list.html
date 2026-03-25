@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Registered Companies | Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+
+body { font-family: 'Inter', sans-serif; }
+
+.custom-scrollbar::-webkit-scrollbar {
+width:4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+background:#cbd5e1;
+border-radius:10px;
+}
+
+.active-nav{
+background:#4f46e5;
+color:white;
+}
+
+/* Mobile Sidebar Animation */
+
+#mobile-sidebar{
+transition:transform 0.3s ease-in-out;
+}
+
+.sidebar-open{
+transform:translateX(0);
+}
+
+.sidebar-closed{
+transform:translateX(-100%);
+}
+
+</style>
+
+</head>
+
+<body class="bg-slate-50 text-slate-900 overflow-hidden">
+
+<!-- Sidebar Overlay (mobile) -->
+
+<div id="sidebar-overlay"
+class="fixed inset-0 bg-black/50 z-40 hidden md:hidden"></div>
+
+
+<div class="flex h-screen overflow-hidden">
+
+<!-- SIDEBAR -->
+
+<aside id="mobile-sidebar"
+class="fixed md:relative top-0 left-0 w-64 bg-white border-r border-slate-200
+flex flex-col h-screen shadow-xl z-50 sidebar-closed md:translate-x-0">
+
+<div class="p-6 border-b border-slate-100 flex items-center justify-between">
+
+<div class="flex items-center gap-3">
+
+<div class="bg-indigo-600 p-2 rounded-lg text-white">
+<i class="fas fa-shield-halved"></i>
+</div>
+
+<div>
+<h1 class="font-bold text-lg leading-none">Admin Panel</h1>
+<p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+Management
+</p>
+</div>
+
+</div>
+
+
+</div>
+
+
+<nav class="flex-1 p-4 space-y-2 custom-scrollbar">
+
+<a href="{% url 'admin_dashboard' %}"
+class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg">
+
+<i class="fas fa-chart-line"></i>
+Dashboard
+
+</a>
+
+<a href="{% url 'company_list' %}"
+class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg active-nav">
+
+<i class="fas fa-building"></i>
+Companies
+
+</a>
+
+</nav>
+
+
+<div class="p-4 border-t border-slate-100">
+
+<a href="{% url 'admin_logout' %}"
+class="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg">
+
+<i class="fas fa-sign-out-alt"></i>
+Logout
+
+</a>
+
+</div>
+
+</aside>
+
+
+
+<!-- MAIN -->
+
+<main class="flex-1 flex flex-col overflow-hidden">
+
+<!-- HEADER -->
+
+<header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8">
+
+<div class="flex items-center gap-3">
+
+<!-- Hamburger -->
+<button id="open-sidebar"
+class="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg">
+
+<i class="fas fa-bars"></i>
+
+</button>
+
+<!-- Title -->
+<div class="leading-tight">
+
+<h2 class="text-lg md:text-xl font-bold text-slate-800 whitespace-nowrap">
+Registered Companies
+</h2>
+
+<p class="text-xs md:text-sm text-slate-500">
+Manage all companies
+</p>
+
+</div>
+
+</div>
+
+<!-- Back Button -->
+
+<a href="{% url 'admin_dashboard' %}"
+class="text-xs md:text-sm font-semibold text-slate-500 hover:text-indigo-600 flex items-center gap-2 whitespace-nowrap">
+
+<i class="fas fa-arrow-left"></i>
+
+<span>Back to Dashboard</span>
+
+</a>
+
+</header>
+
+
+
+<!-- CONTENT -->
+
+<div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+
+<div class="max-w-6xl mx-auto">
+
+
+<div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+
+<div class="p-6 border-b border-slate-100">
+
+<h3 class="font-bold text-slate-800 flex items-center gap-2">
+
+<i class="fas fa-list text-indigo-600"></i>
+Companies List
+
+</h3>
+
+</div>
+
+
+
+<div class="overflow-x-auto">
+
+<table class="w-full text-left">
+
+<thead class="bg-slate-50 text-slate-500 text-xs font-bold uppercase">
+
+<tr>
+
+<th class="px-6 py-4">Company</th>
+<th class="px-6 py-4">Email</th>
+<th class="px-6 py-4">Owner</th>
+<th class="px-6 py-4 text-right">Actions</th>
+
+</tr>
+
+</thead>
+
+
+<tbody class="divide-y divide-slate-100">
+
+{% for c in companies %}
+
+<tr class="hover:bg-slate-50 transition">
+
+<td class="px-6 py-4 font-semibold text-slate-700">
+{{ c.name }}
+</td>
+
+<td class="px-6 py-4 text-sm text-slate-600">
+{{ c.email }}
+</td>
+
+<td class="px-6 py-4 text-sm text-slate-700">
+{{ c.owner.username }}
+</td>
+
+<td class="px-6 py-4 text-right">
+
+<a href="{% url 'edit_company' c.id %}"
+class="text-indigo-600 hover:text-indigo-800 font-semibold text-sm mr-4">
+
+<i class="fas fa-edit"></i>
+Edit
+
+</a>
+
+<form action="{% url 'delete_company' c.id %}"
+method="POST"
+class="inline">
+
+{% csrf_token %}
+
+<button type="submit"
+onclick="return confirm('Are you sure you want to delete this company?');"
+class="text-red-600 hover:text-red-800 font-semibold text-sm">
+
+<i class="fas fa-trash"></i>
+Delete
+
+</button>
+
+</form>
+
+</td>
+
+</tr>
+
+{% empty %}
+
+<tr>
+
+<td colspan="4"
+class="px-6 py-16 text-center text-slate-400">
+
+No companies found
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</main>
+
+</div>
+
+
+<script>
+
+const mobileSidebar = document.getElementById('mobile-sidebar');
+const openSidebarBtn = document.getElementById('open-sidebar');
+const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+function openSidebar(){
+    mobileSidebar.classList.remove('sidebar-closed');
+    mobileSidebar.classList.add('sidebar-open');
+    sidebarOverlay.classList.remove('hidden');
+}
+
+function closeSidebar(){
+    mobileSidebar.classList.remove('sidebar-open');
+    mobileSidebar.classList.add('sidebar-closed');
+    sidebarOverlay.classList.add('hidden');
+}
+
+openSidebarBtn.addEventListener('click', openSidebar);
+
+/* Auto close when clicking outside */
+sidebarOverlay.addEventListener('click', closeSidebar);
+
+</script>

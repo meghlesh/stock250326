@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ company.name }} | Add Product</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .active-nav { background-color: #4f46e5; color: white; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        
+        /* Error styling - TEXT ONLY */
+        .field-error {
+            border-color: #ef4444 !important;
+            background-color: #fef2f2 !important;
+        }
+        .error-text {
+            color: #dc2626 !important;
+            font-size: 0.75rem !important;
+            margin-top: 0.25rem !important;
+            font-weight: 500 !important;
+        }
+
+        /* Responsive Sidebar helper */
+        @media (max-width: 639px) {
+            #sidebar.mobile-closed {
+                transform: translateX(-100%);
+            }
+            #sidebar.mobile-open {
+                transform: translateX(0);
+            }
+        }
+        /* --- Packing Loader Animation Styles --- */
+        .box-loader {
+            width: 80px;
+            height: 80px;
+            background: #4f46e5;
+            position: relative;
+            animation: box-bounce 1s infinite ease-in-out;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.4);
+        }
+        .box-loader::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: #3730a3;
+            transform: translateY(-50%);
+        }
+        .box-loader::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 4px;
+            height: 100%;
+            background: #3730a3;
+            transform: translateX(-50%);
+        }
+        @keyframes box-bounce {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-35px) rotate(8deg); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 overflow-hidden">
+<div id="logout-loader" class="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center hidden">
+        <div class="box-loader"></div>
+        <div class="conveyor-belt"></div>
+        <h3 class="mt-10 text-2xl font-bold text-slate-800 tracking-tight">Packing your workspace...</h3>
+        <p class="text-slate-400 font-medium mt-2">Saving progress and signing out safely.</p>
+    </div>
+
+    <!-- LOGOUT CONFIRMATION MODAL -->
+    <div id="logout-modal"
+        class="fixed inset-0 z-[90] bg-slate-900/40 backdrop-blur-md flex items-center justify-center hidden">
+        <div class="bg-white rounded-[2rem] p-10 max-w-sm w-full mx-4 shadow-2xl transform transition-all scale-95 opacity-0 duration-300 border border-slate-100"
+            id="modal-content">
+            <div class="w-20 h-20 bg-rose-50 text-rose-600 rounded-3xl flex items-center justify-center mb-8 mx-auto">
+                <i data-lucide="log-out" class="w-10 h-10"></i>
+            </div>
+            <h3 class="text-3xl font-bold text-slate-900 text-center">Ready to go?</h3>
+            <p class="text-slate-500 mt-4 mb-10 text-center leading-relaxed">Confirm to sign out of your portal. We'll
+                make sure your session is closed securely.</p>
+            <div class="flex flex-col gap-3">
+                <form id="logout-form" action="{% url 'company_logout' %}" method="POST" class="w-full">
+                    {% csrf_token %}
+                    <button type="submit"
+                        class="w-full px-6 py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all active:scale-[0.98]">
+                        Yes, Log me out
+                    </button>
+                </form>
+                <button onclick="closeLogoutModal()"
+                    class="w-full px-6 py-4 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-all">
+                    Stay here
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- Mobile Overlay Backdrop -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-slate-900/50 z-30 hidden transition-opacity duration-300 opacity-0 sm:hidden"></div>
+
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="fixed sm:static z-40 w-64 bg-white border-r border-slate-200 flex flex-col transition-all duration-300 shrink-0 h-full mobile-closed">
+            <div class="p-6 flex items-center gap-3 border-b border-slate-100 shrink-0">
+                <div class="bg-indigo-600 p-2 rounded-lg text-white shrink-0">
+                    <i data-lucide="building-2" class="w-6 h-6"></i>
+                </div>
+                <div class="overflow-hidden sidebar-text">
+                    <h1 class="font-bold text-lg leading-none truncate">{{ company.name }}</h1>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-widest">Enterprise</p>
+                </div>
+            </div>
+            
+            <nav class="flex-1 overflow-y-auto p-4 space-y-1 custom-scrollbar">
+                <a href="{% url 'company_dashboard' %}" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors group">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5 shrink-0"></i><span class="sidebar-text">Dashboard</span>
+                </a>
+                <div class="pt-4 pb-2 px-4 sidebar-text">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Business Ops</p>
+                </div>
+                <a href="{% url 'product_list' %}" class="nav-item active-nav w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors group">
+                    <i data-lucide="package-search" class="w-5 h-5 shrink-0"></i><span class="sidebar-text">My Inventory</span>
+                </a>
+                <button class="nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                    <i data-lucide="users" class="w-5 h-5 shrink-0"></i><span class="sidebar-text">Staff Members</span>
+                </button>
+                <div class="pt-4 pb-2 px-4 sidebar-text">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Administration</p>
+                </div>
+                <a href="{% url 'company_settings' %}" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                    <i data-lucide="settings" class="w-5 h-5 shrink-0"></i><span class="sidebar-text">Settings</span>
+                </a>
+            </nav>
+            
+            <div class="p-4 border-t border-slate-100 shrink-0">
+                <button onclick="openLogoutModal()"
+        class="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-rose-600 hover:bg-rose-50 rounded-lg">
+    <i data-lucide="log-out" class="w-5 h-5"></i>
+    <span class="sidebar-text">Logout</span>
+</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <!-- Header -->
+            <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-8 shrink-0">
+                <div class="flex items-center gap-3 min-w-0">
+                    <button id="toggle-sidebar"
+                        class="p-2.5 rounded-lg hover:bg-slate-100 text-slate-600 shrink-0">
+                        <i data-lucide="menu" class="w-5 h-5"></i>
+                    </button>
+
+                    <nav class="flex items-center gap-2 text-xs md:text-sm text-slate-500 whitespace-nowrap overflow-hidden">
+                        <a href="{% url 'company_dashboard' %}" 
+                        class="hover:text-indigo-600 shrink-0">
+                            Dashboard
+                        </a>
+                        <i data-lucide="chevron-right" 
+                        class="w-4 h-4 text-slate-300 shrink-0"></i>
+                        <a href="{% url 'product_list' %}" 
+                        class="hover:text-indigo-600 shrink-0">
+                            Inventory
+                        </a>
+                        <i data-lucide="chevron-right" 
+                        class="w-4 h-4 text-slate-300 shrink-0"></i>
+                        <span class="font-semibold text-slate-800 truncate">
+                            Add Product
+                        </span>
+                    </nav>
+                </div>
+
+                
+                <div class="flex items-center gap-4 shrink-0">
+                    <div class="h-10 w-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                        {{ request.user.username|slice:":1"|upper }}
+                    </div>
+                </div>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar">
+                <div class="max-w-4xl mx-auto space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">Add New Product</h2>
+                            <p class="text-slate-500 text-xs sm:text-sm mt-1">Register a new item into your company's global inventory.</p>
+                        </div>
+                        <a href="{% url 'product_list' %}" class="text-sm font-semibold text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors self-start">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to list
+                        </a>
+                    </div>
+
+                    <!-- Form -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <form method="post" id="productForm" novalidate>
+                            {% csrf_token %}
+                            <div class="p-5 sm:p-8 space-y-8">
+                                
+                                <!-- Basic Info -->
+                                <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div class="md:col-span-1">
+                                        <h3 class="font-bold text-slate-800 text-sm sm:text-base">Basic Information</h3>
+                                        <p class="text-[10px] sm:text-xs text-slate-500 mt-1">Provide the core identifying details for this product.</p>
+                                    </div>
+                                    <div class="md:col-span-2 space-y-5">
+                                        <div>
+                                            <label class="block text-[11px] font-black text-slate-800 uppercase tracking-widest mb-2">Product Name <span class="text-red-500">*</span></label>
+                                            <input type="text" name="name" maxlength="50" required
+                                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none transition-all {% if form.name.errors %}field-error{% endif %}"
+                                                placeholder="Product Name" value="{{ form.name.value|default:'' }}">
+                                            {% if form.name.errors %}<p class="error-text">{{ form.name.errors.0 }}</p>{% endif %}
+                                        </div>
+                                        <div>
+                                            <label class="block text-[11px] font-black text-slate-800 uppercase tracking-widest mb-2">Product Company<span class="text-red-500">*</span></label>
+                                            <input type="text" name="product_company" maxlength="100" 
+                                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none transition-all {% if form.product_company.errors %}field-error{% endif %}"
+                                                placeholder="Manufacturer/Brand Name" value="{{ form.product_company.value|default:'' }}">
+                                            {% if form.product_company.errors %}<p class="error-text">{{ form.product_company.errors.0 }}</p>{% endif %}
+                                        </div>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-[11px] font-black text-slate-800 uppercase tracking-widest mb-2">SKU Code<span class="text-red-500">*</span></label>
+                                                <input type="text" name="sku" maxlength="50" required
+                                                    class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none transition-all font-mono text-sm {% if form.sku.errors %}field-error{% endif %}"
+                                                    placeholder="WH-Z1-001" value="{{ form.sku.value|default:'' }}">
+                                                {% if form.sku.errors %}<p class="error-text">{{ form.sku.errors.0 }}</p>{% endif %}
+                                            </div>
+                                            <div>
+                                                <label class="block text-[11px] font-black text-slate-800 uppercase tracking-widest mb-2">Category <span class="text-red-500">*</span></label>
+                                                <div class="relative">
+                                                    <!-- Custom Category Dropdown -->
+<div class="relative">
+    <!-- Hidden input for form submission -->
+    <input type="hidden" name="category" id="categoryInput"
+           value="{{ form.category.value|default:'' }}">
+
+    <!-- Dropdown button -->
+    <button type="button" id="categoryBtn"
+        class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl
+               flex items-center justify-between text-left
+               focus:ring-2 focus:ring-indigo-500 transition-all
+               {% if form.category.errors %}field-error{% endif %}">
+        <span id="categorySelected"
+              class="{% if form.category.value %}text-slate-800{% else %}text-slate-500{% endif %}">
+            {% if form.category.value %}
+                {% for c in categories %}
+                    {% if form.category.value == c.id|stringformat:"s" %}
+                        {{ c.name }}
+                    {% endif %}
+                {% endfor %}
+            {% else %}
+                Select Category
+            {% endif %}
+        </span>
+        <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+    </button>
+
+    <!-- Dropdown menu -->
+    <div id="categoryMenu"
+         class="absolute z-20 mt-2 w-full bg-white border border-slate-200
+                rounded-xl shadow-lg hidden max-h-56 overflow-y-auto custom-scrollbar">
+        {% for c in categories %}
+            <div
+                class="px-4 py-2 text-sm cursor-pointer hover:bg-indigo-50
+                       hover:text-indigo-600 transition"
+                data-value="{{ c.id }}">
+                {{ c.name }}
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% if form.category.errors %}
+<p class="error-text">{{ form.category.errors.0 }}</p>
+{% endif %}
+
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <hr class="border-slate-100">
+
+                                <!-- Pricing & Stock -->
+                                <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div class="md:col-span-1">
+                                        <h3 class="font-bold text-slate-800 text-sm sm:text-base">Pricing & Inventory</h3>
+                                        <p class="text-[10px] sm:text-xs text-slate-500 mt-1">Set your cost, selling price and initial stock quantities.</p>
+                                    </div>
+
+                                    <div class="md:col-span-2">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            <!-- Purchase Price -->
+                                            <div class="flex flex-col">
+                                                <label class="text-[11px] font-black text-slate-800 uppercase tracking-widest mb-2">Purchase Price <span class="text-red-500">*</span></label>
+                                                <div class="relative h-11">
+                                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">₹</span>
+                                                    <input type="number" step="0.01" min="0.01" name="purchase_price" required
+                                                        class="w-full h-full pl-7 pr-4 rounded-xl bg-slate-50 outline-none border transition focus:ring-2 focus:ring-indigo-500 {% if form.purchase_price.errors %}border-red-500{% else %}border-slate-200{% endif %}"
+                                                        placeholder="0.00" value="{{ form.purchase_price.value|default:'' }}">
+                                                </div>
+                                                {% if form.purchase_price.errors %}<p class="text-red-500 text-[10px] mt-1">{{ form.purchase_price.errors.0 }}</p>{% endif %}
+                                            </div>
+
+                                            <!-- Selling Price -->
+                                            <div class="flex flex-col">
+                                                <label class="text-[11px] font-black text-slate-800 uppercase tracking-widest mb-2">Selling Price <span class="text-red-500">*</span></label>
+                                                <div class="relative h-11">
+                                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">₹</span>
+                                                    <input type="number" step="0.01" min="0.01" name="selling_price" required
+                                                        class="w-full h-full pl-7 pr-4 rounded-xl bg-slate-50 outline-none border transition focus:ring-2 focus:ring-indigo-500 {% if form.selling_price.errors %}border-red-500{% else %}border-slate-200{% endif %}"
+                                                        placeholder="0.00" value="{{ form.selling_price.value|default:'' }}">
+                                                </div>
+                                                {% if form.selling_price.errors %}<p class="text-red-500 text-[10px] mt-1">{{ form.selling_price.errors.0 }}</p>{% endif %}
+                                            </div>
+
+                                            <!-- Quantity -->
+                                            <div class="flex flex-col sm:col-span-2 lg:col-span-1">
+                                                <label class="text-[11px] font-black text-slate-800 uppercase tracking-widest mb-2">Initial Qty <span class="text-red-500">*</span></label>
+                                                <input type="number" min="1" name="stock_quantity" required
+                                                    class="w-full h-11 px-4 rounded-xl bg-slate-50 outline-none border transition focus:ring-2 focus:ring-indigo-500 {% if form.stock_quantity.errors %}border-red-500{% else %}border-slate-200{% endif %}"
+                                                    placeholder="0" value="{{ form.stock_quantity.value|default:'0' }}">
+                                                {% if form.stock_quantity.errors %}<p class="text-red-500 text-[10px] mt-1">{{ form.stock_quantity.errors.0 }}</p>{% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <hr class="border-slate-100">
+
+                                <!-- Expiry Tracking -->
+                                <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div class="md:col-span-1">
+                                        <h3 class="font-bold text-slate-800 text-sm sm:text-base">Tracking & Expiry</h3>
+                                        <p class="text-[10px] sm:text-xs text-slate-500 mt-1">Enable for pharmaceutical or perishable goods.</p>
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label class="flex items-center cursor-pointer group p-4 bg-slate-50 rounded-2xl border border-slate-200 hover:border-indigo-200 transition-all">
+                                            <input type="checkbox" name="is_expiry_tracked" id="expiryToggle" class="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                                            <div class="ml-4 text-sm">
+                                                <span class="font-bold text-slate-700 group-hover:text-indigo-600 transition-colors block">Track Expiry Dates</span>
+                                                <span class="text-slate-500 text-[10px] sm:text-xs">Required expiry date if enabled</span>
+                                            </div>
+                                        </label>
+                                        <div id="expiryDateField" class="mt-4 hidden">
+                                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Expiry Date <span class="text-red-500">*</span></label>
+                                            <input type="date"
+                                                   name="default_expiry_date"
+                                                   id="expiryDateInput"
+                                                   class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none transition-all">
+                                            <p id="expiryError" class="error-text hidden">Expiry date required when tracking enabled</p>
+                                        </div>
+                                    </div>
+                                </section>
+                            </div>
+
+                            <!-- Footer Actions -->
+                           <div class="p-5 sm:p-6 bg-slate-50 border-t border-slate-100 flex flex-col-reverse sm:flex-row items-center justify-end gap-3">
+                                <a href="{% url 'product_list' %}" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-100 transition-all text-center">Discard</a>
+                                <button type="submit" id="submitBtn" class="w-full sm:w-auto px-10 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
+                                    <i data-lucide="save" class="w-4 h-4"></i>Save Product
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // Responsive Sidebar Logic
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        const toggleBtn = document.getElementById('toggle-sidebar');
+        const sidebarTexts = document.querySelectorAll('.sidebar-text');
+
+        function isMobile() {
+            return window.innerWidth < 640;
+        }
+
+        toggleBtn.addEventListener('click', () => {
+            if (isMobile()) {
+                const isOpen = sidebar.classList.contains('mobile-open');
+                if (isOpen) {
+                    sidebar.classList.replace('mobile-open', 'mobile-closed');
+                    overlay.classList.add('hidden');
+                    overlay.classList.remove('opacity-100');
+                } else {
+                    sidebar.classList.replace('mobile-closed', 'mobile-open');
+                    overlay.classList.remove('hidden');
+                    setTimeout(() => overlay.classList.add('opacity-100'), 10);
+                }
+            } else {
+                sidebar.classList.toggle('w-64');
+                sidebar.classList.toggle('w-20');
+                sidebarTexts.forEach(el => el.classList.toggle('hidden'));
+            }
+        });
+
+        overlay.addEventListener('click', () => {
+            sidebar.classList.replace('mobile-open', 'mobile-closed');
+            overlay.classList.add('hidden');
+            overlay.classList.remove('opacity-100');
+        });
+
+        window.addEventListener('resize', () => {
+            if (!isMobile()) {
+                sidebar.classList.remove('mobile-open', 'mobile-closed');
+                overlay.classList.add('hidden');
+                overlay.classList.remove('opacity-100');
+            } else {
+                if (!sidebar.classList.contains('mobile-open')) {
+                    sidebar.classList.add('mobile-closed');
+                }
+            }
+        });
+
+        // Expiry toggle logic
+        const expiryToggle = document.getElementById('expiryToggle');
+        const expiryField = document.getElementById('expiryDateField');
+        const expiryDateInput = document.getElementById('expiryDateInput');
+        const expiryError = document.getElementById('expiryError');
+
+        expiryToggle.addEventListener('change', function() {
+            if (this.checked) {
+                expiryField.classList.remove('hidden');
+                expiryDateInput.required = true;
+            } else {
+                expiryField.classList.add('hidden');
+                expiryDateInput.required = false;
+                expiryDateInput.value = '';
+                expiryDateInput.classList.remove('field-error');
+                expiryError.classList.add('hidden');
+            }
+        });
+
+        // Form validation
+        document.getElementById('productForm').addEventListener('submit', function(e) {
+            clearErrors();
+            let valid = true;
+
+            // Product Name
+            const name = this.name.value.trim();
+            if (!name || name.length > 50) {
+                showFieldError('name', 'Product name required (max 50 chars)');
+                valid = false;
+            }
+
+            // Product Company
+            const productCompany = this.product_company.value.trim();
+            if (!productCompany) {
+                showFieldError('product_company', 'Product company required');
+                valid = false;
+            } else if (productCompany.length > 100) {
+                showFieldError('product_company', 'Max 100 characters');
+                valid = false;
+            }
+
+            // SKU
+            if (!this.sku.value.trim()) {
+                showFieldError('sku', 'SKU code required');
+                valid = false;
+            }
+
+            // Category
+            if (!this.category.value) {
+                showFieldError('category', 'Category required');
+                valid = false;
+            }
+
+            // Prices
+            const purchase = parseFloat(this.purchase_price.value);
+            const selling = parseFloat(this.selling_price.value);
+            if (isNaN(purchase) || purchase <= 0) {
+                showFieldError('purchase_price', 'Must be > 0');
+                valid = false;
+            }
+            if (isNaN(selling) || selling <= 0) {
+                showFieldError('selling_price', 'Must be > 0');
+                valid = false;
+            }
+            if (!isNaN(selling) && !isNaN(purchase) && selling <= purchase) {
+                showFieldError('selling_price', 'Selling price must be higher than purchase price');
+                valid = false;
+            }
+
+            // Stock Quantity
+           const qty = parseFloat(this.stock_quantity.value);
+if (isNaN(qty) || qty <= 0) {
+    showFieldError('stock_quantity', 'Quantity must be greater than 0');
+    valid = false;
+}
+
+
+            // Expiry
+            if (this.is_expiry_tracked.checked) {
+                const expiryValue = this.default_expiry_date.value;
+                const today = new Date().toISOString().split('T')[0];
+                if (!expiryValue) {
+                    showFieldError('default_expiry_date', 'Expiry date required');
+                    valid = false;
+                } else if (expiryValue < today) {
+                    showFieldError('default_expiry_date', 'Cannot be in the past');
+                    valid = false;
+                }
+            }
+
+            if (!valid) {
+                e.preventDefault();
+                // Scroll to the first error
+                const firstError = document.querySelector('.field-error');
+                if (firstError) firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+
+        function clearErrors() {
+            document.querySelectorAll('.field-error').forEach(el => el.classList.remove('field-error'));
+            document.querySelectorAll('.error-text').forEach(el => {
+                if (el.id !== 'expiryError') el.remove();
+                else el.classList.add('hidden');
+            });
+        }
+
+        function showFieldError(fieldName, message) {
+            const field = document.querySelector(`[name="${fieldName}"]`);
+            if (field) {
+                field.classList.add('field-error');
+                if (fieldName === 'default_expiry_date') {
+                    const err = document.getElementById('expiryError');
+                    err.textContent = message;
+                    err.classList.remove('hidden');
+                } else {
+                    const error = document.createElement('p');
+                    error.className = 'error-text';
+                    error.textContent = message;
+                    field.parentNode.appendChild(error);
+                }
+            }
+        }
+
+        // Real-time date validation FIX:
+        // We do NOT clear the value here anymore to allow manual typing
+        const todayStr = new Date().toISOString().split('T')[0];
+        expiryDateInput.setAttribute('min', todayStr);
+
+        expiryDateInput.addEventListener('input', function() {
+            // Only validate if they've typed enough characters to be a full date (YYYY-MM-DD = 10 chars)
+            if (this.value.length === 10) {
+                if (this.value < todayStr) {
+                    this.classList.add('field-error');
+                    expiryError.textContent = 'Expiry date cannot be in the past';
+                    expiryError.classList.remove('hidden');
+                } else {
+                    this.classList.remove('field-error');
+                    expiryError.classList.add('hidden');
+                }
+            } else {
+                // Remove error style while they are still typing
+                this.classList.remove('field-error');
+                expiryError.classList.add('hidden');
+            }
+        });
+
+        // Final check when they leave the field
+        expiryDateInput.addEventListener('blur', function() {
+            if (this.value && this.value < todayStr) {
+                this.classList.add('field-error');
+                expiryError.textContent = 'Expiry date cannot be in the past';
+                expiryError.classList.remove('hidden');
+            }
+        });
+
+    // Custom Category Dropdown Logic
+const categoryBtn = document.getElementById('categoryBtn');
+const categoryMenu = document.getElementById('categoryMenu');
+const categorySelected = document.getElementById('categorySelected');
+const categoryInput = document.getElementById('categoryInput');
+
+// Toggle dropdown
+categoryBtn.addEventListener('click', () => {
+    categoryMenu.classList.toggle('hidden');
+});
+
+// Select option
+categoryMenu.querySelectorAll('[data-value]').forEach(option => {
+    option.addEventListener('click', () => {
+        categorySelected.textContent = option.textContent;
+        categorySelected.classList.remove('text-slate-500');
+        categorySelected.classList.add('text-slate-800');
+
+        categoryInput.value = option.dataset.value;
+        categoryMenu.classList.add('hidden');
+
+        // Remove error style if any
+        categoryBtn.classList.remove('field-error');
+    });
+});
+
+// Close dropdown on outside click
+document.addEventListener('click', (e) => {
+    if (!categoryBtn.contains(e.target) && !categoryMenu.contains(e.target)) {
+        categoryMenu.classList.add('hidden');
+    }
+});
+const logoutModal = document.getElementById('logout-modal');
+        const modalContent = document.getElementById('modal-content');
+        const logoutLoader = document.getElementById('logout-loader');
+        const logoutForm = document.getElementById('logout-form');
+
+        function openLogoutModal() {
+            logoutModal.classList.remove('hidden');
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+        }
+
+        function closeLogoutModal() {
+            modalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                logoutModal.classList.add('hidden');
+            }, 300);
+        }
+
+        logoutForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            closeLogoutModal();
+            setTimeout(() => {
+                logoutLoader.classList.remove('hidden');
+                // Packing animation duration before final redirect
+                setTimeout(() => {
+                    this.submit();
+                }, 1600);
+            }, 300);
+        });
+
+    </script>
+    <script>
+
+        const nameCompanyPattern = /^[A-Za-z0-9 ]*$/;
+        const skuPattern = /^[A-Za-z0-9 -]*$/;
+
+        function restrictInput(fieldName, pattern) {
+            const field = document.querySelector(`[name="${fieldName}"]`);
+            if (!field) return;
+
+            field.addEventListener("input", function () {
+                const cursorPos = this.selectionStart;
+                const original = this.value;
+
+                if (!pattern.test(original)) {
+                    this.value = original.replace(
+                        new RegExp(`[^${pattern.source.slice(2, -3)}]`, "g"),
+                        ""
+                    );
+                }
+
+                this.setSelectionRange(cursorPos + 1, cursorPos + 1);
+            });
+
+            field.addEventListener("paste", function (e) {
+                const pasteData = (e.clipboardData || window.clipboardData).getData("text");
+                if (!pattern.test(pasteData)) {
+                    e.preventDefault();
+                }
+            });
+        }
+
+        restrictInput("name", nameCompanyPattern);
+        restrictInput("product_company", nameCompanyPattern);
+        restrictInput("sku", skuPattern);
+    </script>
+    {% if messages %}
+<div id="toast-message"
+     class="fixed top-20 left-[60%] -translate-x-1/2 z-50 px-6 py-3 rounded-xl shadow-lg bg-green-100 border border-green-400 text-green-800 font-semibold">
+    {% for message in messages %}
+        {{ message }}
+    {% endfor %}
+</div>
+
+<script>
+setTimeout(() => {
+    const toast = document.getElementById('toast-message');
+    if (toast) {
+        toast.style.transition = "opacity 0.4s ease";
+        toast.style.opacity = "0";
+
+        setTimeout(() => {
+            toast.remove();
+        }, 400);
+    }
+}, 3000); // 3 seconds
+</script>
+{% endif %}
+</body>
+</html>
