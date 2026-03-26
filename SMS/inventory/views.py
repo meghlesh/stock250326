@@ -777,7 +777,7 @@ def add_sales_order(request):
             request,
             f"Sales order {order.order_number} created successfully."
         )
-        return redirect("add_sales_orders")
+        return redirect("sales_orders")
 
     return render(
         request,
